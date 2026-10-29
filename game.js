@@ -363,10 +363,10 @@ function startScissor(tg){const P=G.P;P.sass=0;P.st='cine';G.stats.scissor++;
  G.cine={t:0,tg,x0:P.x,face:sgn(tg.x-P.x)||1,dealt:false,partner:G.twins[G.active==='rosa'?'lupe':'rosa'].hp>0};P.face=G.cine.face;
  if(!tg.boss){tg.st='grabbed'}sfx('scratch');sfx('ooh');say(G.cine.partner?'double twin scissor lock!':'scissor lock!',tw().voice);
  G.banner={txt:G.cine.partner?'DOUBLE TWIN SCISSOR LOCK':'SCISSOR LOCK!',sub:'(it\'s a WRESTLING move, Mom)',t:0,life:2.2,col:'#ffe14d'}}
-function updateCine(dt){const c=G.cine,P=G.P,e=c.tg,T=tw();c.t+=dt;const eh=e.boss?e.B.h:e.d.h;const hx=e.x-c.face*(e.boss?e.w*0.25:16),hy=GROUND-eh*0.8;
+function updateCine(dt){const c=G.cine,P=G.P,e=c.tg,T=tw();c.t+=dt;if(c.t<0.6){const lo=G.camX+(portrait?150:210),hi=G.camX+viewW-RM-(portrait?150:215),tx2=lo>hi?(lo+hi)/2:clamp(e.x,lo,hi);e.x+=(tx2-e.x)*Math.min(1,dt*12)}const eh=e.boss?e.B.h:e.d.h;const hx=e.x-c.face*(e.boss?e.w*0.25:16),hy=GROUND-eh*0.8;
  if(c.t<0.45){const k=c.t/0.45;P.x=c.x0+(hx-c.x0)*k;P.y=GROUND+(hy-GROUND)*Math.sin(k*Math.PI*0.5)-Math.sin(k*Math.PI)*80}
  else if(c.t<1.9){P.x=hx+Math.sin(c.t*40)*3;P.y=hy;if(!e.boss)e.wob=Math.sin(c.t*30)*0.08;if(Math.floor(c.t*6)!==Math.floor((c.t-dt)*6)){sfx('squeeze');shake(5);e.flash=0.45;
-   pop(e.x+rnd(-50,50),GROUND-eh-rnd(20,70),pick(['SQUEEZE!','TAP OUT!','SAY UNCLE!','THIGHS OF FURY!','CRUNCH!','OH NO NOT THE THIGHS']),pick(['#ffe14d','#ff3fae','#fff']),rnd(24,32),0.6);comboHit()}}
+   if(Math.floor(c.t*6)%2)pop(e.x+rnd(-50,50),GROUND-eh-rnd(20,70),pick(['SQUEEZE!','TAP OUT!','SAY UNCLE!','THIGHS OF FURY!','CRUNCH!','OH NO NOT THE THIGHS']),pick(['#ffe14d','#ff3fae','#fff']),rnd(24,32),0.6);comboHit()}}
  else if(c.t<2.35){const k=(c.t-1.9)/0.45;if(!e.boss)e.wob=c.face*k*1.3;P.y=hy+(GROUND-60-hy)*k;if(!c.dealt&&k>0.8){c.dealt=true;sfx('slam');shake(26);hitstop(0.18);
    burst(e.x,GROUND-10,30,['#fff','#ffe14d','#c9a27a','#ff3fae'],800,900,12,'star');G.fx.push({k:'ring',x:e.x,y:GROUND,t:0,life:0.5,r:260,c:'#ffe14d'});
    pop(e.x,GROUND-eh-30,pick(POP.scissor),'#ff3fae',52,1.4);
@@ -667,7 +667,7 @@ function drawHUD(){const P=G.P,T=tw();const top=GT+(portrait?6:8)+(parseFloat(ge
  if(G.goT>0&&G.phase==='walk'&&Math.floor(G.t*4)%2)txt('GO! →',W-24,GT+GH*0.45,40,'#ffe14d','right');
  /* banner */
  if(G.banner){const b=G.banner,k=b.t/b.life,s=k<0.12?1.6-k/0.12*0.6:1;ctx.save();ctx.translate(W/2,GT+GH*(portrait?0.28:0.24));ctx.scale(s,s);ctx.globalAlpha=k>0.8?(1-k)/0.2:1;
-  const fs=Math.min(44,W/(b.txt.length*0.55+1));ctx.fillStyle='rgba(0,0,0,0.32)';ctx.fillRect(-W,-fs*0.75,W*2,fs*1.5+(b.sub?16:0));txt(b.txt,0,0,fs,b.col);if(b.sub)txt(b.sub,0,fs*0.85,Math.min(18,fs*0.5),'#fff');ctx.restore()}
+  let fs=44;ctx.font='900 44px Impact,"Trebuchet MS",sans-serif';const mw=ctx.measureText(b.txt).width;if(mw>W*0.92)fs=Math.max(16,44*W*0.92/mw);ctx.fillStyle='rgba(0,0,0,0.32)';ctx.fillRect(-W,-fs*0.75,W*2,fs*1.5+(b.sub?16:0));txt(b.txt,0,0,fs,b.col);if(b.sub)txt(b.sub,0,fs*0.85,Math.min(18,fs*0.5),'#fff');ctx.restore()}
  /* boss bar */
  if(G.boss&&G.boss.st!=='fly'&&G.phase==='boss'){const b=G.boss,w=Math.min(W-40,520),x=(W-w)/2,y=GT+GH-(portrait?30:(G.cine?60:34));txt(b.B.name,x,y-12,16,'#fff','left');bar(x,y,w,14,b.hp/b.max,'#ff2a2a','#ff3fae','')}
  /* buttons state */
@@ -736,6 +736,6 @@ let last=performance.now();
 function frame(now){const dt=Math.min(0.033,(now-last)/1000);last=now;tG+=dt;
  if(G&&(state==='play')){readInput(dt);update(dt)}else if(G&&(state==='clear'||state==='over'||state==='win')){/* frozen */}
  render();requestAnimationFrame(frame)}
-window.__ptt={get G(){return G},get state(){return state},startLevel,surprise:()=>surprise(),cut:k=>showCut(k),fill:()=>{G.P.sass=100;G.P.gas=100},boss:()=>{G.waves.forEach(w=>w.done=true);G.P.x=G.bossX-200;G.camX=G.P.x-200}};
+window.__ptt={get G(){return G},get state(){return state},startLevel,surprise:()=>surprise(),cut:k=>showCut(k),fill:()=>{G.P.sass=100;G.P.gas=100},win:()=>winScreen(),over:()=>gameOver(),boss:()=>{G.waves.forEach(w=>w.done=true);G.P.x=G.bossX-200;G.camX=G.P.x-200}};
 (async()=>{resize();await loadAll();$('load').hidden=true;if(SAVE.adult)title();else ageGate();requestAnimationFrame(frame)})();
 })();
