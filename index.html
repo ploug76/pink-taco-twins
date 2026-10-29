@@ -26,6 +26,31 @@
 </div>
 <div id="ui"></div>
 <div id="load"><div class="lt">LOADING THE FILTH…</div><div class="lb"><i id="loadBar"></i></div></div>
-<script src="game.js?v=5"></script>
+<script src="game.js?v=6"></script>
 <script>if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{})</script>
+<!-- gamepad:start -->
+<script src="gamepad.js?v=2"></script>
+<script>
+(function(){
+function S(){try{return window.__ptt.state}catch(e){return ''}}
+function ov(){return !!document.querySelector('#palbOv.on,#smpLock.on')}
+function skip(){var el=document.querySelector('#ui>.full');if(el)el.click()}
+function kk(code){return function(p){var s=S();if(s==='cut'||s==='bossintro'){if(p)skip();return}if(s!=='play'&&p)return;GamepadSupport.key(code,p)}}
+GamepadSupport.init({
+ keys:{left:'ArrowLeft',right:'ArrowRight',up:'ArrowUp',down:'ArrowDown',
+  a:kk('ArrowUp'),x:kk('KeyJ'),b:kk('KeyK'),y:kk('KeyL'),rt:kk('KeyJ'),lt:kk('KeyK'),rb:kk('KeyT'),lb:kk('KeyT'),
+  start:function(p){if(p&&(S()==='play'||S()==='pause'))GamepadSupport.key('KeyP',true),GamepadSupport.key('KeyP',false)},
+  back:function(p){if(p)GamepadSupport.key('KeyM',true),GamepadSupport.key('KeyM',false)}},
+ noRepeat:['start','back','rb','lb'],repeat:false,
+ ignoreSel:'#hud,#pad',
+ menu:function(){var s=S();return ov()||!(s==='play'||s==='cut'||s==='bossintro')},
+ isPaused:function(){return S()==='pause'},
+ pause:function(){if(S()==='play'){GamepadSupport.key('KeyP',true);GamepadSupport.key('KeyP',false)}},
+ back:function(){if(ov())return false;if(S()==='pause'){GamepadSupport.key('KeyP',true);GamepadSupport.key('KeyP',false);return true}
+  var b=document.getElementById('bBack');if(b){b.click();return true}return false},
+ hint:{text:'🎮 Controller: stick move · A jump · X attack · B queef (hold = nado) · Y scissor · RB tag · Start pause',when:function(){return S()==='title'&&!ov()}}
+});
+})();
+</script>
+<!-- gamepad:end -->
 </body></html>

@@ -687,7 +687,7 @@ function ageGate(){state='age';setPlayUI(false);AU.play('title');
 function title(){state='title';setPlayUI(false);G=null;AU.play('title');
  show('<img class="title-art" src="art/title.webp?v=1" alt="The Pink Taco Twins vs. the Scissor Sisters"><div class="row">'+btn('bPlay','▶ PLAY')+btn('bHow','HOW TO PLAY','alt')+btn('bSet','⚙ SETTINGS','alt')+'</div><p class="sub">Best score: '+(SAVE.best||0)+' · Levels unlocked: '+SAVE.unlocked+'/5</p>');
  on('bPlay',select);on('bHow',()=>how(title));on('bSet',settings)}
-function how(back){show('<h2>HOW TO BRAWL</h2><ul class="how">'+
+function how(back){show('<h2>HOW TO BRAWL</h2><ul class="how">'+  '<li><b>🎮 Controller</b> (Xbox, PlayStation or Switch; USB or Bluetooth, on a computer or paired to your phone): stick/D-pad move, <b>A</b> jump (down in the air = butt bomb), <b>X</b> attack, <b>B</b> queef (hold = nado), <b>Y</b> scissor, <b>RB/LB</b> tag, <b>Start</b> pause, <b>Select</b> sound. Menus: D-pad + A, B goes back.</li>'+
  '<li><b>Swipe &amp; hold</b> left/right anywhere to move. <b>Swipe up</b> to jump. <b>Swipe down in the air</b> = BUTT BOMB.</li>'+
  '<li><b>ATTACK</b> = BOOB BUMPS. Tap 3× fast: the 3rd bump is a DOUBLE-D-STRUCTION that dazes.</li>'+
  '<li>ATTACK a <b>dazed</b> enemy (stars) = <b>MOTORBOAT MAYHEM</b>. Mash ATTACK, then she tosses them like a bowling ball.</li>'+
