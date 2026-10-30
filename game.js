@@ -10,7 +10,7 @@ const VH=540,GROUND=488;
 const IMG={};
 const SPR=['rosa','rosa_bump','rosa_special','rosa_jump','rosa_hurt','lupe','lupe_bump','lupe_special','lupe_jump','lupe_hurt',
  'e_karen','e_mallcop','e_roomba','e_bachelorette','e_elvis','e_flamingo','e_gymbro','e_yogi','e_thigh','e_bigfoot','e_raccoon','e_clipper','e_mime',
- 'b_karen','b_snippy','b_clippy','b_trixie','b_shearleen','p_burrito','p_spanx','p_wine','p_marg','p_yogurt','p_divorce'];
+ 'b_karen','b_snippy','b_clippy','b_trixie','b_shearleen','rosa_na','rosa_a0u','rosa_a0f','lupe_na','lupe_a0u','lupe_a0f','lupe_a1u','lupe_a1f','e_bachelorette_na','e_bachelorette_a0u','e_bachelorette_a0f','e_bachelorette_dr','e_bigfoot_na','e_bigfoot_a0u','e_bigfoot_a0f','e_elvis_na','e_elvis_a0u','e_elvis_a0f','p_burrito','p_spanx','p_wine','p_marg','p_yogurt','p_divorce'];
 const BGS=['bg1','bg2','bg3','bg4','bg5'];
 function loadImg(n){return new Promise(res=>{const im=new Image();im.decoding='async';im.onload=()=>{IMG[n]=im;res()};im.onerror=()=>res();im.src='art/'+n+'.webp?v=1'})}
 function silhouette(im,col){const c=document.createElement('canvas');c.width=im.width;c.height=im.height;const x=c.getContext('2d');x.drawImage(im,0,0);x.globalCompositeOperation='source-in';x.fillStyle=col;x.fillRect(0,0,c.width,c.height);return c}
@@ -532,35 +532,97 @@ function update(dt){G.t+=dt;
  if(G.lock){const l=G.lock.l,r=G.lock.r;tx=r-l<=viewW?(l+r)/2-viewW/2:clamp(tx,l,r-viewW)}
  tx=clamp(tx,0,G.levelLen-viewW);G.camX+=(tx-G.camX)*Math.min(1,dt*6)}
 /* ---------------- render ---------------- */
-/* ===== leg rig (Grey Heart leg check, Oct 2026): render-only cutout legs =====
-   The art is one pose per character, so legs were frozen while walking. Each leg below the crotch line is cut from the
-   same image and swung about its hip; phase comes from distance moved, amplitude eases in/out so legs settle to the art pose.
-   cfg in native image px: cy=crotch/hem line, p=[hipL,hipR] x, x=[x0,x1] leg area, m='pair'|'dup'(one column drawn twice)|'one' */
-const LEGRIG={rosa:{cy:232,cx:116,p:[81,168],A:.26},
- e_karen:{cy:276,cx:146,p:[110,181],A:.24},e_bachelorette:{cy:336,cx:125,p:[105,148],A:.3},e_bigfoot:{cy:312,cx:146,p:[88,217],A:.2},
- e_raccoon:{cy:296,cx:150,p:[100,205],x:[46,245],A:.26},e_clipper:{cy:252,cx:160,p:[128,190],A:.24},e_mime:{cy:268,cx:126,p:[97,146],A:.26},
- e_gymbro:{cy:318,cx:150,p:[132,170],A:.2},e_elvis:{cy:280,m:'one',p:[112,112],x:[58,166],A:.2},
- b_clippy:{cy:388,cx:249,p:[176,298],A:.24},b_snippy:{cy:502,cx:290,p:[251,324],A:.26},b_trixie:{cy:466,cx:308,p:[276,320],A:.28},b_shearleen:{cy:400,cx:358,p:[263,378],A:.16}};
-for(const k in LEGRIG){const r=LEGRIG[k];r.m=r.m||'pair';if(!r.x)r.x=[0,4096]}
+/* ===== jointed leg rig (Grey Heart knee pass, Oct 30 2026): render-only =====
+   The art is one pose per character. Each leg below the cut line cy is cut from that same image into thigh / shin / foot
+   pieces (hip, knee and ankle points measured from the art) and posed as a 3-bone chain: the thigh swings about the hip,
+   the shin bends at the knee (most in early swing, near-straight in stance), the foot counter-rotates to stay near its art
+   angle, and the figure is lowered so the stance foot stays planted on the ground line. A static strip of each thigh top is
+   drawn underneath so the hip never opens a gap; neighbouring pieces overlap at the knee and ankle.
+   Phase comes from distance moved, amp eases 0..1, and at amp 0 the art pose is drawn exactly.
+   L: [x0,x1 column, hipX,hipY, kneeX,kneeY, ankleX,ankleY, footBottom] in native image px; f = art facing (+1 right, -1 left);
+   m:'one' = a single standing leg (Elvis's kick pose: the kicked leg is part of the body art). */
+const LEGRIG={rosa:{cy:232,x:[0,250],L:[[0,116,88,225,61,285,42,333,396],[116,250,154,225,184,285,196,333,387]],f:1},
+ e_karen:{cy:276,x:[0,243],L:[[0,146,120,262,104,312,88,345,396],[146,243,168,262,193,312,214,345,391]]},
+ e_bachelorette:{cy:336,x:[0,271],L:[[0,125,112,275,114,336,106,352,396],[125,271,172,275,184,336,222,352,390]]},
+ e_bigfoot:{cy:312,x:[0,262],L:[[0,146,92,290,92,322,77,348,396],[146,262,195,290,207,322,218,348,395]]},
+ e_raccoon:{cy:296,x:[46,245],L:[[46,150,90,285,102,318,103,338,374],[150,245,189,285,200,318,218,338,396]]},
+ e_clipper:{cy:252,x:[0,237],L:[[0,160,136,240,130,292,122,328,396],[160,237,182,240,203,292,211,328,385]]},
+ e_mime:{cy:268,x:[0,210],L:[[0,126,101,255,99,305,100,352,396],[126,210,143,255,157,305,186,352,381]]},
+ e_gymbro:{cy:303,x:[90,200],L:[[90,150,134,285,138,318,143,350,396],[150,200,166,285,166,318,174,350,396]]},
+ e_elvis:{cy:280,x:[58,166],L:[[58,166,106,268,113,318,116,352,396]],m:'one'},
+ b_clippy:{cy:388,x:[0,456],L:[[0,249,198,370,162,455,135,522,595],[249,456,284,370,329,455,381,522,572]]},
+ b_snippy:{cy:388,x:[228,355],L:[[228,292,276,380,265,448,252,505,595],[292,355,322,380,312,448,326,505,595]]},
+ b_trixie:{cy:466,x:[100,302],L:[[100,232,180,405,180,466,192,515,595],[232,302,266,405,267,466,280,515,572]]},
+ b_shearleen:{cy:440,x:[150,548],L:[[150,340,269,430,288,488,273,530,594],[340,548,392,430,394,488,396,530,595]]}};
+(function(){const ang=(p,q,f)=>Math.atan2(f*(q[0]-p[0]),q[1]-p[1]);
+ for(const n in LEGRIG){const R=LEGRIG[n];R.f=R.f||-1;R.m=R.m||'pair';let g=0;
+  R.legs=R.L.map(v=>{const L={c:[v[0],v[1]],h:[v[2],v[3]],k:[v[4],v[5]],a:[v[6],v[7]],fb:v[8]};const len=L.fb-L.h[1];
+   L.t0=ang(L.h,L.k,R.f);L.s0=ang(L.k,L.a,R.f);L.hb=len*.12;L.ov=L.k[1]>R.cy+2?Math.max(8,len*.06):Math.max(12,len*.14);L.ok=len*.1;L.oa=len*.07;g=Math.max(g,L.fb);return L});
+  R.G0=g;const t=R.legs.map(L=>L.t0);
+  if(R.m==='one'){R.At=.1;R.Kmax=.42;R.legs[0].o=0}
+  else{R.Tm=(t[0]+t[1])/2;R.At=Math.min(.45,Math.max(.24,Math.abs(t[0]-t[1])/2+.04));R.Kmax=n[0]==='b'?.62:.78;R.legs[0].o=t[0]>=t[1]?0:Math.PI;R.legs[1].o=R.legs[0].o+Math.PI}
+  R.K0=.08;R.fc=.8;const lf=(g-Math.min(...R.legs.map(L=>L.h[1])))/IMGH(n);R.lf=lf;
+  R.sL=R.m==='one'?.35:Math.max(.3,4*lf*Math.sin(R.At))}})();
+function IMGH(n){return n[0]==='b'?600:400}
+/* arm rig (render-only): free arms cut from the art offline into upper arm + forearm pieces (art/<name>_a<i>u|f.webp, placed at
+   their art offset), the body drawn from <name>_na.webp (same art with those arms removed and the torso behind them refilled).
+   Upper arm swings about the shoulder opposite its paired leg, forearm bends at the elbow; z 'back' arms go behind the body.
+   Arms busy with a prop or a pose (phones, scissors, clippers, mic, the mime's wall, flexing) are left in the art. */
+const ARMRIG={"rosa":[{"u":["rosa_a0u",162,103],"f":["rosa_a0f",166,105],"S":[163,112],"E":[186,168],"W":[218,118],"z":"front","g":0,"A":0.16,"K":0.22}],"lupe":[{"u":["lupe_a0u",28,95],"f":["lupe_a0f",28,133],"S":[62,108],"E":[34,150],"W":[72,182],"z":"front","g":0,"A":0.3,"K":0.3},{"u":["lupe_a1u",146,92],"f":["lupe_a1f",148,108],"S":[152,108],"E":[167,170],"W":[205,122],"z":"front","g":1,"A":0.3,"K":0.3}],"e_bachelorette":[{"u":["e_bachelorette_a0u",166,96],"f":["e_bachelorette_a0f",206,129],"S":[180,108],"E":[226,140],"W":[240,212],"z":"back","g":1,"A":0.32,"K":0.28}],"e_bigfoot":[{"u":["e_bigfoot_a0u",170,86],"f":["e_bigfoot_a0f",192,143],"S":[192,100],"E":[228,168],"W":[222,240],"z":"back","g":1,"A":0.26,"K":0.22}],"e_elvis":[{"u":["e_elvis_a0u",166,91],"f":["e_elvis_a0f",173,121],"S":[176,106],"E":[232,140],"W":[192,158],"z":"front","g":0,"A":0.14,"K":0.22}]};
+for(const n in ARMRIG)for(const a of ARMRIG[n]){const u=[a.E[0]-a.S[0],a.E[1]-a.S[1]],v=[a.W[0]-a.E[0],a.W[1]-a.E[1]];a.fx=Math.sign(u[0]*v[1]-u[1]*v[0])||1}
+/* stride tied to ground speed: cadence ~1.65-1.95 steps/s walking, rising to ~2.6-3 when running (speed in leg lengths/s);
+   stride length = speed / cadence, thigh swing chosen so the planted foot travels exactly that far (no sliding) */
+function gaitV(o,dx,mv,R,h){const now=performance.now(),dt=Math.min(.1,o._gt?(now-o._gt)/1000:0);o._gt=now;if(o._gp===undefined){o._gp=0;o._ga=0;o._v=0;o._At=R.At||.3}
+ if(dt>0&&mv)o._v+=(dx/dt-o._v)*Math.min(1,dt*(dx/dt>o._v?14:6));const lw=R.lf*h,r=o._v/lw,c=r<2.2?1.65+r/2.2*.3:Math.min(3,1.95+(r-2.2)*.45),Lc=Math.max(1,2*o._v/c);
+ const At=R.m==='one'?R.At:Math.min(.72,Math.max(.14,Math.asin(Math.min(.97,Lc/(4*lw)))));o._At+=(At-o._At)*Math.min(1,dt*6);o._run=Math.min(1,Math.max(0,(r-2.2)/1.6));
+ o._ga+=((mv?1:0)-o._ga)*Math.min(1,dt*10);if(mv)o._gp+=Math.PI*c*dt;else{o._v*=Math.max(0,1-dt*8);if(o._ga<.03){o._ga=0;o._gp=Math.round(o._gp/Math.PI)*Math.PI}}
+ o._cad=c;return o._ga}
 /* gait state on o: _gp phase (rad), _ga amp 0..1; mv = moving this frame, d = distance moved (world), L = stride length (world, one full cycle) */
 function gait(o,mv,d,L){const now=performance.now(),dt=Math.min(.1,o._gt?(now-o._gt)/1000:0);o._gt=now;if(o._gp===undefined){o._gp=0;o._ga=0}
  o._ga+=((mv?1:0)-o._ga)*Math.min(1,dt*10);if(mv)o._gp+=d/L*Math.PI*2;else if(o._ga<.03){o._ga=0;o._gp=Math.round(o._gp/Math.PI)*Math.PI}
  return o._ga}
-function cutDraw(im,R,w,h,oy,ph,amp,fwd){const k=h/im.height,W=im.width,sw=Math.sin(ph),cw=Math.cos(ph),cy=R.cy,ov=Math.max(10,im.height*.035);
- const leg=(x0,x1,px,ang,lift)=>{ctx.save();ctx.translate(-w/2+px*k,oy+cy*k-lift*h);ctx.rotate(ang);ctx.translate(-px*k,-cy*k);
-  ctx.beginPath();ctx.rect(x0*k,(cy-ov)*k,(x1-x0)*k,(im.height-cy+ov)*k);ctx.clip();ctx.drawImage(im,0,0,W,im.height,0,0,w,h);ctx.restore()};
- const a=amp*R.A*sw,lu=.028*amp;
- if(R.m==='pair'){leg(R.x[0],R.cx,R.p[0],a,lu*Math.max(0,-cw*fwd));leg(R.cx,R.x[1],R.p[1],-a,lu*Math.max(0,cw*fwd))}
- else if(R.m==='dup'){leg(R.x[0],R.x[1],R.p[0],-a,lu*Math.max(0,cw*fwd));leg(R.x[0],R.x[1],R.p[0],a,lu*Math.max(0,-cw*fwd))}
- else leg(R.x[0],R.x[1],R.p[0],a,lu*Math.max(0,-cw*fwd));
- ctx.save();ctx.beginPath();ctx.rect(-w/2,oy,w,h);const x1=R.m==='pair'?R.x[1]:R.x[1];ctx.rect(-w/2+R.x[0]*k,oy+cy*k,(x1-R.x[0])*k,(im.height-cy)*k);ctx.clip('evenodd');
- ctx.drawImage(im,-w/2,oy,w,h);ctx.restore()}
+function legPose(R,ph,amp,At,run){const f=R.f,out=[];let low=-1e9;At=At||R.At;run=run||0;
+ const rot=(p,o,r)=>{const c=Math.cos(r),s=Math.sin(r),x=p[0]-o[0],y=p[1]-o[1];return[o[0]+x*c-y*s,o[1]+x*s+y*c]};
+ for(const L of R.legs){const phi=ph+L.o;let T,K;
+  if(R.m==='one'){T=L.t0+At*Math.sin(phi);K=(L.t0-L.s0)+R.Kmax*Math.max(0,Math.sin(phi))}
+  else{T=R.Tm+At*Math.sin(phi);K=R.K0+R.Kmax*(1+.55*run)*Math.pow(Math.max(0,Math.cos(phi+.4)),1.4)}
+  const dT=amp*(T-L.t0),dS=amp*((T-K)-L.s0),r1=-f*dT,r2=-f*dS,r3=-f*dS*(1-R.fc);
+  const k2=rot(L.k,L.h,r1),a1=rot(L.a,L.k,r2),a2=[a1[0]+k2[0]-L.k[0],a1[1]+k2[1]-L.k[1]];
+  const fb=rot([L.a[0],L.fb],L.a,r3);low=Math.max(low,fb[1]+a2[1]-L.a[1]);out.push({L,r1,r2,r3,k2,a2})}
+ return{legs:out,dy:R.G0-low}}
+/* joint disc radii from the art's alpha (leg half-width at knee / hip), once per character */
+const LSC={};
+function jointW(name,R){R._jw=1;let d=null;try{const im=IMG[name],c=document.createElement('canvas');c.width=im.width;c.height=im.height;const x=c.getContext('2d');x.drawImage(im,0,0);d=x.getImageData(0,0,im.width,im.height)}catch(e){}
+ const hw=(L,p,lim)=>{if(!d)return lim;const y=Math.round(p[1]),W=d.width,A=(x)=>d.data[(y*W+x)*4+3]>40;let l=Math.round(p[0]),r=l;while(l>L.c[0]&&A(l-1))l--;while(r<L.c[1]-1&&A(r+1))r++;return Math.min(lim,Math.max(p[0]-l,r-p[0]))+3};
+ for(const L of R.legs){const len=Math.hypot(L.a[0]-L.h[0],L.a[1]-L.h[1]);L.rk=Math.max(L.ok,hw(L,L.k,len*.32));L.rh=Math.max(L.ov,hw(L,L.h,len*.3))}}
+function figDraw(name,sfx,w,h,oy,leg,arm){const R=leg&&leg[1]>.01?LEGRIG[name]:null,AR=arm&&arm[1]>.01&&IMG[name+'_na'+sfx]?ARMRIG[name]:null;
+ const im=IMG[name+sfx],base=AR?IMG[name+'_na'+sfx]:im,H=im.height,k=h/H,P=R?legPose(R,leg[0],leg[1],leg[2],leg[3]):null;
+ ctx.save();ctx.translate(-w/2,oy+(P?P.dy*k:0));ctx.scale(k,k);
+ const arms=(z)=>{if(!AR)return;const f=LEGRIG[name]?LEGRIG[name].f:1,sw=arm[2]||1;for(const a of AR){if(a.z!==z)continue;const LR=LEGRIG[name];
+  const ph=arm[0]+(LR&&LR.legs[a.g]?LR.legs[a.g].o+Math.PI:(a.g?Math.PI:0)),s=Math.sin(ph),ru=-f*a.A*sw*s*arm[1],rf=ru+a.fx*a.K*sw*s*arm[1];
+  const c=Math.cos(ru),sn=Math.sin(ru),ex=a.E[0]-a.S[0],ey=a.E[1]-a.S[1],E2=[a.S[0]+ex*c-ey*sn,a.S[1]+ex*sn+ey*c],pu=IMG[a.u[0]+sfx],pf=IMG[a.f[0]+sfx];
+  if(pu){ctx.save();ctx.translate(a.S[0],a.S[1]);ctx.rotate(ru);ctx.translate(-a.S[0],-a.S[1]);ctx.drawImage(pu,a.u[1],a.u[2]);ctx.restore()}
+  if(pf){ctx.save();ctx.translate(E2[0],E2[1]);ctx.rotate(rf);ctx.translate(-a.E[0],-a.E[1]);ctx.drawImage(pf,a.f[1],a.f[2]);ctx.restore()}}};
+ arms('back');
+ const DR=P?IMG[name+'_dr'+sfx]:null;let LS=base;if(DR){const ck=name+sfx+(AR?'n':'');LS=LSC[ck];if(!LS){LS=document.createElement('canvas');LS.width=base.width;LS.height=base.height;const x=LS.getContext('2d');x.drawImage(base,0,0);x.globalCompositeOperation='destination-out';x.drawImage(DR,0,0);LSC[ck]=LS}}
+ if(P){if(!R._jw)jointW(name,R);const seg=(L,y0,y1,p0,p1,r,dz)=>{ctx.save();if(p0){ctx.translate(p1[0],p1[1]);ctx.rotate(r);ctx.translate(-p0[0],-p0[1])}
+   if(dz){ctx.beginPath();ctx.rect(L.c[0],0,L.c[1]-L.c[0],1e4);ctx.clip()}ctx.beginPath();ctx.rect(L.c[0],y0,L.c[1]-L.c[0],y1-y0);if(dz)for(const d of dz){ctx.moveTo(d[0]+d[2],d[1]);ctx.arc(d[0],d[1],d[2],0,Math.PI*2)}ctx.clip();ctx.drawImage(LS,0,0);ctx.restore()};
+  for(const q of P.legs)seg(q.L,R.cy,R.cy+q.L.hb);
+  for(const q of P.legs){const L=q.L,kn=L.k[1]>R.cy+2,dk=[L.k[0],L.k[1],L.rk];
+   /* rounded joints: pieces meet at the knee line, plus a shared disc around the knee/hip so wide pant fabric can't swing out as flaps */
+   if(kn)seg(L,R.cy,L.k[1],L.h,L.h,q.r1,[[L.h[0],L.h[1],L.rh],dk]);
+   seg(L,kn?L.k[1]:R.cy-L.ov,L.a[1]+L.oa,L.k,q.k2,q.r2,kn?[dk]:null);
+   seg(L,L.a[1]-L.oa,H,L.a,q.a2,q.r3)}
+  ctx.save();ctx.beginPath();ctx.rect(0,0,im.width,H);ctx.rect(R.x[0],R.cy,R.x[1]-R.x[0],H-R.cy);ctx.clip('evenodd');ctx.drawImage(base,0,0);ctx.restore();if(DR)ctx.drawImage(DR,0,0)/* skirt/dress hem stays with the body, over the moving legs */}
+ else ctx.drawImage(base,0,0);
+ arms('front');ctx.restore()}
 function spr(name,x,y,h,face,native,o){const im=IMG[name];if(!im)return;o=o||{};const sc=h/im.height,w=im.width*sc;
  ctx.save();ctx.translate(x,y);if(o.rot)ctx.rotate(o.rot);ctx.scale((face===native?1:-1)*(o.sx||1),o.sy||1);if(o.alpha!==undefined)ctx.globalAlpha=o.alpha;
- const oy=o.oy===undefined?-h:o.oy;const LR=o.leg&&o.leg[1]>.01?LEGRIG[name]:null;const D=(m)=>LR?cutDraw(m,LR,w,h,oy,o.leg[0],o.leg[1],native):ctx.drawImage(m,-w/2,oy,w,h);D(im);
- if(o.green&&IMG[name+'_g']){ctx.globalAlpha=o.green;D(IMG[name+'_g'])}
- if(o.flash&&IMG[name+'_w']){ctx.globalAlpha=o.flash*(o.fmul||0.7);D(IMG[name+'_w'])}
- if(o.gold&&IMG[name+'_w']){ctx.globalAlpha=o.gold;ctx.globalCompositeOperation='lighter';D(IMG[name+'_w'])}
+ const oy=o.oy===undefined?-h:o.oy;const rig=(o.leg&&o.leg[1]>.01&&LEGRIG[name])||(o.arm&&o.arm[1]>.01&&ARMRIG[name]);
+ const D=(sf)=>rig?figDraw(name,sf,w,h,oy,o.leg,o.arm):ctx.drawImage(IMG[name+sf],-w/2,oy,w,h);D('');
+ if(o.green&&IMG[name+'_g']){ctx.globalAlpha=o.green;D('_g')}
+ if(o.flash&&IMG[name+'_w']){ctx.globalAlpha=o.flash*(o.fmul||0.7);D('_w')}
+ if(o.gold&&IMG[name+'_w']){ctx.globalAlpha=o.gold;ctx.globalCompositeOperation='lighter';D('_w')}
  ctx.restore();return w}
 function star(x,y,r,n){ctx.beginPath();for(let i=0;i<n*2;i++){const a=i*Math.PI/n-Math.PI/2,rr=i%2?r*0.45:r;ctx.lineTo(x+Math.cos(a)*rr,y+Math.sin(a)*rr)}ctx.closePath()}
 function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
@@ -580,8 +642,9 @@ function drawPlayer(P){const T=tw();let [n,hm]=playerSprite(P);let h=T.h*hm,o={}
    spr(pn,px,py+18,T.h*0.86,-c.face,1,{rot:c.face*r})}
   return}
  shadow(x,46,P.onG?0.32:0.18);
- {const wk=G.active==='rosa'&&n==='rosa'&&(P.st==='idle'||P.st==='air')&&P.onG&&Math.abs(P.vx)>30;const dw=P.walkT-(P._lw===undefined?P.walkT:P._lw);P._lw=P.walkT;gait(P,wk,dw,Math.PI*2);P._gp=P.walkT;if(!wk&&P._ga<.03&&G.active==='rosa')P.walkT=Math.round(P.walkT/Math.PI)*Math.PI,P._lw=P.walkT;if(n==='rosa')o.leg=[P.walkT,P._ga]}
- if(P.st==='idle'||P.st==='air'){if(P.onG&&Math.abs(P.vx)>30){if(G.active==='lupe'){o.rot=P.face*0.07;y-=Math.abs(Math.sin(P.walkT*0.5))*3}else{y-=Math.abs(Math.sin(P.walkT))*8*P._ga;o.rot=Math.sin(P.walkT)*0.05*P._ga}}else if(P.onG){o.sy=1+Math.sin(G.t*3.2)*0.015}}
+ {const wk=G.active==='rosa'&&n==='rosa'&&(P.st==='idle'||P.st==='air')&&P.onG&&Math.abs(P.vx)>30;const dxr=Math.abs(P.x-(P._lx===undefined?P.x:P._lx));P._lx=P.x;if(n==='rosa'){gaitV(P,wk?dxr:0,wk,LEGRIG.rosa,h);o.leg=[P._gp,P._ga,P._At,P._run];o.arm=[P._gp,P._ga,1+.4*P._run]}
+ if(n==='lupe'){const sk=P.onG&&Math.abs(P.vx)>30&&(P.st==='idle'||P.st==='air');const n2=performance.now(),d2=Math.min(.1,P._lt?(n2-P._lt)/1000:0);P._lt=n2;P._la=(P._la||0)+((sk?1:0)-(P._la||0))*Math.min(1,d2*8);if(P._la>.01)o.arm=[P.walkT*.5,P._la,1]}}
+ if(P.st==='idle'||P.st==='air'){if(P.onG&&Math.abs(P.vx)>30){if(G.active==='lupe'){o.rot=P.face*0.07;y-=Math.abs(Math.sin(P.walkT*0.5))*3}else if(n!=='rosa'){y-=Math.abs(Math.sin(P.walkT))*8*P._ga;o.rot=Math.sin(P.walkT)*0.05*P._ga}}else if(P.onG){o.sy=1+Math.sin(G.t*3.2)*0.015}}
  if(P.land>0){o.sy=0.9;o.sx=1.08}
  if(P.st==='grab')x+=Math.sin(G.t*70)*5;
  if(P.st==='atk'&&P.step===2)o.sx=1.08;
@@ -601,9 +664,9 @@ function drawEnemy(e){const d=e.d;const boss=!!e.boss;const name=boss?e.B.img:'e
  else if(e.st==='flex'){o.sx=o.sy=1+Math.abs(Math.sin(G.t*10))*0.05}
  else if(e.st==='dash'){o.rot=e.face*0.12}
  else if(e.st==='hurt'){o.sx=0.92;o.sy=1.05}
- else if(LEGRIG[name]&&e.y>=GROUND-2){const dx=Math.abs(e.x-(e._lx===undefined?e.x:e._lx));e._lx=e.x;if(dx>.25)e._mvT=.12;else e._mvT=(e._mvT||0)-1/60;const a=gait(e,e._mvT>0,dx,h*.62);y-=(Math.abs(Math.sin(e._gp))*(boss?5:6))*a;o.rot=Math.sin(e._gp)*0.03*a;o.leg=[e._gp,a]}
+ else if(LEGRIG[name]&&e.y>=GROUND-2){const dx=Math.abs(e.x-(e._lx===undefined?e.x:e._lx));e._lx=e.x;if(dx>.25)e._mvT=.12;else e._mvT=(e._mvT||0)-1/60;const a=gaitV(e,dx,e._mvT>0,LEGRIG[name],h);o.leg=[e._gp,a,e._At,e._run];if(ARMRIG[name])o.arm=[e._gp,a,1+.5*e._run]}
  else{y-=Math.abs(Math.sin(e.bob*(boss?5:8)))*(boss?5:6);o.rot=Math.sin(e.bob*8)*0.03}
- if(!o.leg){e._lx=e.x;if(LEGRIG[name]&&e._ga>.01){const a=gait(e,false,0,1);o.leg=[e._gp,a]}}
+ if(!o.leg){e._lx=e.x;if(LEGRIG[name]&&e._ga>.01){const a=gaitV(e,0,false,LEGRIG[name],h);o.leg=[e._gp,a,e._At,e._run];if(ARMRIG[name])o.arm=[e._gp,a,1]}}
  if(boss&&e.phase===2&&e.st!=='fly')o.flash=Math.max(o.flash,0.12+Math.sin(G.t*8)*0.08);
  if(e.chute&&e.st==='enter'){ctx.fillStyle='#ff3fae';ctx.strokeStyle='#000';ctx.lineWidth=3;ctx.beginPath();ctx.arc(e.x,y-h-90,80,Math.PI,0);ctx.closePath();ctx.fill();ctx.stroke();
   ctx.fillStyle='#ffe14d';ctx.beginPath();ctx.arc(e.x,y-h-90,80,Math.PI,Math.PI*1.33);ctx.lineTo(e.x,y-h-90);ctx.fill();ctx.beginPath();ctx.moveTo(e.x-78,y-h-90);ctx.lineTo(e.x,y-h*0.6);ctx.lineTo(e.x+78,y-h-90);ctx.stroke()}
