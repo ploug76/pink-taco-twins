@@ -532,12 +532,35 @@ function update(dt){G.t+=dt;
  if(G.lock){const l=G.lock.l,r=G.lock.r;tx=r-l<=viewW?(l+r)/2-viewW/2:clamp(tx,l,r-viewW)}
  tx=clamp(tx,0,G.levelLen-viewW);G.camX+=(tx-G.camX)*Math.min(1,dt*6)}
 /* ---------------- render ---------------- */
+/* ===== leg rig (Grey Heart leg check, Oct 2026): render-only cutout legs =====
+   The art is one pose per character, so legs were frozen while walking. Each leg below the crotch line is cut from the
+   same image and swung about its hip; phase comes from distance moved, amplitude eases in/out so legs settle to the art pose.
+   cfg in native image px: cy=crotch/hem line, p=[hipL,hipR] x, x=[x0,x1] leg area, m='pair'|'dup'(one column drawn twice)|'one' */
+const LEGRIG={rosa:{cy:232,cx:116,p:[81,168],A:.26},
+ e_karen:{cy:276,cx:146,p:[110,181],A:.24},e_bachelorette:{cy:336,cx:125,p:[105,148],A:.3},e_bigfoot:{cy:312,cx:146,p:[88,217],A:.2},
+ e_raccoon:{cy:296,cx:150,p:[100,205],x:[46,245],A:.26},e_clipper:{cy:252,cx:160,p:[128,190],A:.24},e_mime:{cy:268,cx:126,p:[97,146],A:.26},
+ e_gymbro:{cy:318,cx:150,p:[132,170],A:.2},e_elvis:{cy:280,m:'one',p:[112,112],x:[58,166],A:.2},
+ b_clippy:{cy:388,cx:249,p:[176,298],A:.24},b_snippy:{cy:502,cx:290,p:[251,324],A:.26},b_trixie:{cy:466,cx:308,p:[276,320],A:.28},b_shearleen:{cy:400,cx:358,p:[263,378],A:.16}};
+for(const k in LEGRIG){const r=LEGRIG[k];r.m=r.m||'pair';if(!r.x)r.x=[0,4096]}
+/* gait state on o: _gp phase (rad), _ga amp 0..1; mv = moving this frame, d = distance moved (world), L = stride length (world, one full cycle) */
+function gait(o,mv,d,L){const now=performance.now(),dt=Math.min(.1,o._gt?(now-o._gt)/1000:0);o._gt=now;if(o._gp===undefined){o._gp=0;o._ga=0}
+ o._ga+=((mv?1:0)-o._ga)*Math.min(1,dt*10);if(mv)o._gp+=d/L*Math.PI*2;else if(o._ga<.03){o._ga=0;o._gp=Math.round(o._gp/Math.PI)*Math.PI}
+ return o._ga}
+function cutDraw(im,R,w,h,oy,ph,amp,fwd){const k=h/im.height,W=im.width,sw=Math.sin(ph),cw=Math.cos(ph),cy=R.cy,ov=Math.max(10,im.height*.035);
+ const leg=(x0,x1,px,ang,lift)=>{ctx.save();ctx.translate(-w/2+px*k,oy+cy*k-lift*h);ctx.rotate(ang);ctx.translate(-px*k,-cy*k);
+  ctx.beginPath();ctx.rect(x0*k,(cy-ov)*k,(x1-x0)*k,(im.height-cy+ov)*k);ctx.clip();ctx.drawImage(im,0,0,W,im.height,0,0,w,h);ctx.restore()};
+ const a=amp*R.A*sw,lu=.028*amp;
+ if(R.m==='pair'){leg(R.x[0],R.cx,R.p[0],a,lu*Math.max(0,-cw*fwd));leg(R.cx,R.x[1],R.p[1],-a,lu*Math.max(0,cw*fwd))}
+ else if(R.m==='dup'){leg(R.x[0],R.x[1],R.p[0],-a,lu*Math.max(0,cw*fwd));leg(R.x[0],R.x[1],R.p[0],a,lu*Math.max(0,-cw*fwd))}
+ else leg(R.x[0],R.x[1],R.p[0],a,lu*Math.max(0,-cw*fwd));
+ ctx.save();ctx.beginPath();ctx.rect(-w/2,oy,w,h);const x1=R.m==='pair'?R.x[1]:R.x[1];ctx.rect(-w/2+R.x[0]*k,oy+cy*k,(x1-R.x[0])*k,(im.height-cy)*k);ctx.clip('evenodd');
+ ctx.drawImage(im,-w/2,oy,w,h);ctx.restore()}
 function spr(name,x,y,h,face,native,o){const im=IMG[name];if(!im)return;o=o||{};const sc=h/im.height,w=im.width*sc;
  ctx.save();ctx.translate(x,y);if(o.rot)ctx.rotate(o.rot);ctx.scale((face===native?1:-1)*(o.sx||1),o.sy||1);if(o.alpha!==undefined)ctx.globalAlpha=o.alpha;
- const oy=o.oy===undefined?-h:o.oy;ctx.drawImage(im,-w/2,oy,w,h);
- if(o.green&&IMG[name+'_g']){ctx.globalAlpha=o.green;ctx.drawImage(IMG[name+'_g'],-w/2,oy,w,h)}
- if(o.flash&&IMG[name+'_w']){ctx.globalAlpha=o.flash*(o.fmul||0.7);ctx.drawImage(IMG[name+'_w'],-w/2,oy,w,h)}
- if(o.gold&&IMG[name+'_w']){ctx.globalAlpha=o.gold;ctx.globalCompositeOperation='lighter';ctx.drawImage(IMG[name+'_w'],-w/2,oy,w,h)}
+ const oy=o.oy===undefined?-h:o.oy;const LR=o.leg&&o.leg[1]>.01?LEGRIG[name]:null;const D=(m)=>LR?cutDraw(m,LR,w,h,oy,o.leg[0],o.leg[1],native):ctx.drawImage(m,-w/2,oy,w,h);D(im);
+ if(o.green&&IMG[name+'_g']){ctx.globalAlpha=o.green;D(IMG[name+'_g'])}
+ if(o.flash&&IMG[name+'_w']){ctx.globalAlpha=o.flash*(o.fmul||0.7);D(IMG[name+'_w'])}
+ if(o.gold&&IMG[name+'_w']){ctx.globalAlpha=o.gold;ctx.globalCompositeOperation='lighter';D(IMG[name+'_w'])}
  ctx.restore();return w}
 function star(x,y,r,n){ctx.beginPath();for(let i=0;i<n*2;i++){const a=i*Math.PI/n-Math.PI/2,rr=i%2?r*0.45:r;ctx.lineTo(x+Math.cos(a)*rr,y+Math.sin(a)*rr)}ctx.closePath()}
 function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
@@ -557,7 +580,8 @@ function drawPlayer(P){const T=tw();let [n,hm]=playerSprite(P);let h=T.h*hm,o={}
    spr(pn,px,py+18,T.h*0.86,-c.face,1,{rot:c.face*r})}
   return}
  shadow(x,46,P.onG?0.32:0.18);
- if(P.st==='idle'||P.st==='air'){if(P.onG&&Math.abs(P.vx)>30){if(G.active==='lupe'){o.rot=P.face*0.07;y-=Math.abs(Math.sin(P.walkT*0.5))*3}else{y-=Math.abs(Math.sin(P.walkT))*8;o.rot=Math.sin(P.walkT)*0.05}}else if(P.onG){o.sy=1+Math.sin(G.t*3.2)*0.015}}
+ {const wk=G.active==='rosa'&&n==='rosa'&&(P.st==='idle'||P.st==='air')&&P.onG&&Math.abs(P.vx)>30;const dw=P.walkT-(P._lw===undefined?P.walkT:P._lw);P._lw=P.walkT;gait(P,wk,dw,Math.PI*2);P._gp=P.walkT;if(!wk&&P._ga<.03&&G.active==='rosa')P.walkT=Math.round(P.walkT/Math.PI)*Math.PI,P._lw=P.walkT;if(n==='rosa')o.leg=[P.walkT,P._ga]}
+ if(P.st==='idle'||P.st==='air'){if(P.onG&&Math.abs(P.vx)>30){if(G.active==='lupe'){o.rot=P.face*0.07;y-=Math.abs(Math.sin(P.walkT*0.5))*3}else{y-=Math.abs(Math.sin(P.walkT))*8*P._ga;o.rot=Math.sin(P.walkT)*0.05*P._ga}}else if(P.onG){o.sy=1+Math.sin(G.t*3.2)*0.015}}
  if(P.land>0){o.sy=0.9;o.sx=1.08}
  if(P.st==='grab')x+=Math.sin(G.t*70)*5;
  if(P.st==='atk'&&P.step===2)o.sx=1.08;
@@ -577,7 +601,9 @@ function drawEnemy(e){const d=e.d;const boss=!!e.boss;const name=boss?e.B.img:'e
  else if(e.st==='flex'){o.sx=o.sy=1+Math.abs(Math.sin(G.t*10))*0.05}
  else if(e.st==='dash'){o.rot=e.face*0.12}
  else if(e.st==='hurt'){o.sx=0.92;o.sy=1.05}
+ else if(LEGRIG[name]&&e.y>=GROUND-2){const dx=Math.abs(e.x-(e._lx===undefined?e.x:e._lx));e._lx=e.x;if(dx>.25)e._mvT=.12;else e._mvT=(e._mvT||0)-1/60;const a=gait(e,e._mvT>0,dx,h*.62);y-=(Math.abs(Math.sin(e._gp))*(boss?5:6))*a;o.rot=Math.sin(e._gp)*0.03*a;o.leg=[e._gp,a]}
  else{y-=Math.abs(Math.sin(e.bob*(boss?5:8)))*(boss?5:6);o.rot=Math.sin(e.bob*8)*0.03}
+ if(!o.leg){e._lx=e.x;if(LEGRIG[name]&&e._ga>.01){const a=gait(e,false,0,1);o.leg=[e._gp,a]}}
  if(boss&&e.phase===2&&e.st!=='fly')o.flash=Math.max(o.flash,0.12+Math.sin(G.t*8)*0.08);
  if(e.chute&&e.st==='enter'){ctx.fillStyle='#ff3fae';ctx.strokeStyle='#000';ctx.lineWidth=3;ctx.beginPath();ctx.arc(e.x,y-h-90,80,Math.PI,0);ctx.closePath();ctx.fill();ctx.stroke();
   ctx.fillStyle='#ffe14d';ctx.beginPath();ctx.arc(e.x,y-h-90,80,Math.PI,Math.PI*1.33);ctx.lineTo(e.x,y-h-90);ctx.fill();ctx.beginPath();ctx.moveTo(e.x-78,y-h-90);ctx.lineTo(e.x,y-h*0.6);ctx.lineTo(e.x+78,y-h-90);ctx.stroke()}
