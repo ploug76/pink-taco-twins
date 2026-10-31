@@ -9,7 +9,7 @@ const VH=540,GROUND=488;
 /* ---------------- assets ---------------- */
 const IMG={};
 const SPR=['rosa','rosa_bump','rosa_special','rosa_jump','rosa_hurt','lupe','lupe_bump','lupe_special','lupe_jump','lupe_hurt',
- 'e_karen','e_mallcop','e_roomba','e_bachelorette','e_elvis','e_flamingo','e_gymbro','e_yogi','e_thigh','e_bigfoot','e_raccoon','e_clipper','e_mime',
+ 'e_mime_s','e_bigfoot_s','e_clipper_s','e_karen','e_mallcop','e_roomba','e_bachelorette','e_elvis','e_flamingo','e_gymbro','e_yogi','e_thigh','e_bigfoot','e_raccoon','e_clipper','e_mime',
  'b_karen','b_snippy','b_clippy','b_trixie','b_shearleen','rosa_na','rosa_a0u','rosa_a0f','lupe_na','lupe_a0u','lupe_a0f','lupe_a1u','lupe_a1f','e_bachelorette_na','e_bachelorette_a0u','e_bachelorette_a0f','e_bachelorette_dr','e_bigfoot_na','e_bigfoot_a0u','e_bigfoot_a0f','e_elvis_na','e_elvis_a0u','e_elvis_a0f','p_burrito','p_spanx','p_wine','p_marg','p_yogurt','p_divorce'];
 const BGS=['bg1','bg2','bg3','bg4','bg5'];
 function loadImg(n){return new Promise(res=>{const im=new Image();im.decoding='async';im.onload=()=>{IMG[n]=im;res()};im.onerror=()=>res();im.src='art/'+n+'.webp?v=1'})}
@@ -541,7 +541,10 @@ function update(dt){G.t+=dt;
    Phase comes from distance moved, amp eases 0..1, and at amp 0 the art pose is drawn exactly.
    L: [x0,x1 column, hipX,hipY, kneeX,kneeY, ankleX,ankleY, footBottom] in native image px; f = art facing (+1 right, -1 left);
    m:'one' = a single standing leg (Elvis's kick pose: the kicked leg is part of the body art). */
-const LEGRIG={rosa:{cy:232,x:[0,250],L:[[0,116,88,225,61,285,42,333,396],[116,250,154,225,184,285,196,333,387]],f:1},
+const LEGRIG={e_mime_s:{cy:252,x:[0,207],L:[[0,108,92,232,74,300,60,350,395],[108,207,132,232,148,300,173,350,393]]},
+ e_bigfoot_s:{cy:308,x:[0,250],L:[[0,128,96,285,85,322,76,342,395],[128,250,162,285,203,322,222,342,391]]},
+ e_clipper_s:{cy:262,x:[0,260],L:[[0,160,138,235,121,292,104,338,395],[160,260,179,235,207,292,228,338,391]]},
+ rosa:{cy:232,x:[0,250],L:[[0,116,88,225,61,285,42,333,396],[116,250,154,225,184,285,196,333,387]],f:1},
  e_karen:{cy:276,x:[0,243],L:[[0,146,120,262,104,312,88,345,396],[146,243,168,262,193,312,214,345,391]]},
  e_bachelorette:{cy:336,x:[0,271],L:[[0,125,112,275,114,336,106,352,396],[125,271,172,275,184,336,222,352,390]]},
  e_bigfoot:{cy:312,x:[0,262],L:[[0,146,92,290,92,322,77,348,396],[146,262,195,290,207,322,218,348,395]]},
@@ -654,7 +657,7 @@ function drawPlayer(P){const T=tw();let [n,hm]=playerSprite(P);let h=T.h*hm,o={}
  if(P.spanx>0){ctx.globalAlpha=0.5;ctx.strokeStyle='#ffe14d';ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(x,y-h*0.5,h*0.36,h*0.56,0,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1}
  if(P.bangs>0){P.bangs-=1/60;txt('BANGS',x,y-h-14,16,'#9cf')}
  if(P.tipsy>0){for(let i=0;i<3;i++){const a=G.t*3+i*2.1;ctx.fillStyle='#ffe14d';star(x+Math.cos(a)*36,y-h-8+Math.sin(a)*8,7,5);ctx.fill()}}}
-function drawEnemy(e){const d=e.d;const boss=!!e.boss;const name=boss?e.B.img:'e_'+e.type;let h=boss?e.B.h:d.h,y=e.y,o={flash:e.flash,green:e.gasT>0?0.33:0,fmul:boss?0.4:0.7};
+function drawEnemy(e){const d=e.d;const boss=!!e.boss;let name=boss?e.B.img:'e_'+e.type;if(!boss&&(e._ga||0)>.3&&LEGRIG[name+'_s']&&IMG[name+'_s'])name+='_s';/* side-view walk art (Oct 30 2026) */let h=boss?e.B.h:d.h,y=e.y,o={flash:e.flash,green:e.gasT>0?0.33:0,fmul:boss?0.4:0.7};
  if(e.st!=='fly')shadow(e.x,boss?e.w*0.55:Math.max(30,h*0.22),0.3);
  if(d.float&&e.st!=='fly')y-=24+Math.sin(e.bob*2)*10;
  if(e.st==='fly'){o.rot=e.rot}
