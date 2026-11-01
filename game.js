@@ -177,19 +177,27 @@ const LOSE=['You got SNIPPED.','The Scissor Sisters left you a 1-star review.','
 const WINL=['The Scissor Sisters were sentenced to 10,000 hours of community service: cutting their own bangs.','Big Shearleen\'s robot was sold for scrap. It is now 400 hair dryers at a Ross.','Las Vegas declared a state of emergency for air quality. The twins declared a 3-day hangover.'];
 /* ---------------- layout ---------------- */
 const pad=$('pad'),hud=$('hud'),ui=$('ui');
-function resize(){DPR=Math.min(2,window.devicePixelRatio||1);W=innerWidth;H=innerHeight;cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);
+/* Peter Oct 31 9:12 PM: iPhone cutoff fix - size to the VISIBLE viewport */
+function viewWH(){const vv=window.visualViewport,de=document.documentElement;let w=innerWidth||de.clientWidth,h=innerHeight||de.clientHeight;
+ if(de.clientHeight>0)h=Math.min(h,de.clientHeight);if(vv&&vv.scale>0.99&&vv.scale<1.01){w=Math.min(w,vv.width)||w;h=Math.min(h,vv.height)||h}return[Math.max(1,Math.round(w)),Math.max(1,Math.round(h))]}
+function resize(){DPR=Math.min(2,window.devicePixelRatio||1);[W,H]=viewWH();cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);
  portrait=H>W*1.08;
  if(portrait){GH=Math.round(Math.min(H-270,W*1.48));GT=0}else{GH=H;GT=0}
  VHv=portrait?540:Math.min(540,Math.max(420,GH*1.05));S=GH/VHv;viewW=W/S;RM=portrait?30:Math.min(viewW*0.25,(Math.min(104,H*0.24)+40)/S);layoutPad()}
 function place(el,x,y,sz){el.style.left=x+'px';el.style.top=y+'px';el.style.width=sz+'px';el.style.height=sz+'px'}
+/* Peter Oct 31 9:12 PM: 3 action buttons -> N64-style diamond at bottom right, all the same smaller size.
+   Bottom slot left empty: SCISSOR left, QUEEF top, ATTACK right (thumb spot). Above the safe-area bottom. */
 function layoutPad(){const hint=$('swipeHint');const sb=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sab'))||0;
- if(portrait){const top=GH,ph=H-GH;const a=Math.min(112,ph*0.52),s=Math.min(90,ph*0.42),c=Math.min(80,ph*0.38);
-  const cy=top+ph*0.56;place($('bAttack'),W-a-14,cy-a/2,a);place($('bSpecial'),W-a-s-26,cy-s/2+a*0.22,s);place($('bScissor'),W-a-s*0.5-c-30,cy-c/2-a*0.42,c);
-  hint.style.top=(top+8)+'px';hint.style.bottom='';hint.style.left='8px';hint.style.right=(a+s+40)+'px';hint.style.textAlign='left';hint.style.fontSize='11px'}
- else{const a=Math.min(104,H*0.24),s=Math.min(86,H*0.2),c=Math.min(74,H*0.18);
-  place($('bAttack'),W-a-18,H-a-16,a);place($('bSpecial'),W-a-s-30,H-s-12,s);place($('bScissor'),W-a/2-c/2-18,H-a-c-26,c);
-  hint.style.top='';hint.style.bottom='10px';hint.style.left='12px';hint.style.right=(a+s+50)+'px';hint.style.textAlign='left';hint.style.fontSize='10px'}}
-addEventListener('resize',resize);addEventListener('orientationchange',()=>setTimeout(resize,200));
+ let d,mr,mb;
+ if(portrait){const ph=H-GH;d=Math.round(Math.max(54,Math.min(72,W*0.17,ph*0.3)));mr=14;mb=Math.round(Math.max(14,Math.min(30,ph*0.08)))+sb}
+ else{d=Math.round(Math.max(48,Math.min(64,H*0.155)));mr=14;mb=10+sb}
+ const off=Math.ceil((d+8)/1.414),by=H-mb-d;
+ place($('bAttack'),W-mr-d,by,d);place($('bSpecial'),W-mr-off-d,by-off,d);place($('bScissor'),W-mr-2*off-d,by,d);
+ const fs=(id,k)=>{const e=$(id).querySelector('b');if(e)e.style.fontSize=Math.round(d*k)+'px'};fs('bAttack',0.17);fs('bSpecial',0.18);fs('bScissor',0.15);
+ const hr=2*off+d+mr+16;
+ if(portrait){hint.style.top=(GH+8)+'px';hint.style.bottom='';hint.style.left='8px';hint.style.right=hr+'px';hint.style.textAlign='left';hint.style.fontSize='11px'}
+ else{hint.style.top='';hint.style.bottom='10px';hint.style.left='12px';hint.style.right=hr+'px';hint.style.textAlign='left';hint.style.fontSize='10px'}}
+addEventListener('resize',resize);addEventListener('orientationchange',()=>setTimeout(resize,200));if(window.visualViewport)visualViewport.addEventListener('resize',resize);setInterval(()=>{const [w,h]=viewWH();if(w!==W||h!==H)resize()},400);
 /* ---------------- input ---------------- */
 const K={};const VIRT={atk:0,sp:0,sc:0};const TOUCH=new Map();
 const inp={L:0,R:0,jumpP:0,downP:0,atkP:0,spDown:0,spHeld:0,spRel:0,scP:0};
